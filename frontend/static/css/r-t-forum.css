@@ -1,0 +1,186 @@
+/* ------------------------------
+   UTILITY
+--------------------------------*/
+.hidden {
+  display: none !important;
+}
+
+/* ------------------------------
+   GLOBAL RESET + BASE STYLES
+--------------------------------*/
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  background: #f5f7fa;
+  color: #222;
+  line-height: 1.6;
+}
+
+/* ------------------------------
+   NAVIGATION BAR
+--------------------------------*/
+nav {
+  background: #1e293b;
+  padding: 12px 20px;
+  display: flex;
+  gap: 20px;
+}
+
+nav a {
+  color: #e2e8f0;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+nav a:hover {
+  color: #38bdf8;
+}
+
+/* ------------------------------
+   MAIN CONTAINER
+--------------------------------*/
+.container {
+  max-width: 900px;
+  margin: 30px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* ------------------------------
+   FILTER BUTTONS
+--------------------------------*/
+.post-filters {
+  margin: 15px 0;
+  display: flex;
+  gap: 10px;
+}
+
+.filter-btn {
+  padding: 6px 12px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  text-decoration: none;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.filter-btn.active {
+  background: #38bdf8;
+  color: white;
+}
+
+/* ------------------------------
+   CATEGORY TAGS
+--------------------------------*/
+.categories-filter {
+  margin: 15px 0;
+}
+
+.category-tag {
+  display: inline-block;
+  background: #cbd5e1;
+  padding: 5px 10px;
+  border-radius: 6px;
+  margin-right: 8px;
+  text-decoration: none;
+  color: #1e293b;
+}
+
+.category-tag:hover {
+  background: #94a3b8;
+}
+
+/* ------------------------------
+   POSTS LIST
+--------------------------------*/
+.posts {
+  margin-top: 20px;
+}
+
+.post {
+  background: #f8fafc;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.post h2 a {
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.post h2 a:hover {
+  color: #38bdf8;
+}
+
+.post-meta {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.post-content {
+  margin: 10px 0 15px;
+}
+
+/* ------------------------------
+   CATEGORY BADGES INSIDE POSTS
+--------------------------------*/
+.category-badge {
+  display: inline-block;
+  background: #38bdf8;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-right: 6px;
+  font-size: 12px;
+}
+
+/* ------------------------------
+   REACTIONS
+--------------------------------*/
+.post-reactions {
+  margin-top: 10px;
+}
+
+.reaction-btn {
+  background: #e2e8f0;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.reaction-btn:hover {
+  background: #cbd5e1;
+}
+
+.reaction-display {
+  font-size: 14px;
+  color: #475569;
+}
+
+.login-prompt {
+  font-size: 12px;
+  color: #64748b;
+  margin-left: 8px;
+}
+
+/* ------------------------------
+   EMPTY STATE
+--------------------------------*/
+.no-posts {
+  text-align: center;
+  padding: 20px;
+  color: #64748b;
+}
+

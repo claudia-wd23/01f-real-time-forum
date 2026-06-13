@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Forum</title>
+
+    <!-- Adjust path if needed -->
+    <link rel="stylesheet" href="/static/css/r-t-forum.css" />
+  </head>
+  <body>
+    <!-- Top navigation bar -->
+    <header class="top-nav">
+      <div class="logo">Real-Time Forum</div>
+      <nav class="nav-links">
+        <button id="nav-home-btn" class="hidden">Home</button>
+        <button id="nav-new-post-btn" class="hidden">New Post</button>
+        <div id="testResult"></div>
+        </nav>
+      <div class="auth-controls">
+        <span id="current-user-label" class="hidden"></span>
+        <button id="nav-login-btn">Login</button>
+        <button id="nav-register-btn">Register</button>
+        <button id="nav-logout-btn" class="hidden">Logout</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <!-- Left: Online users / conversations (always visible) -->
+      <aside class="sidebar hidden" id="chat-sidebar">
+        <h2>Chats</h2>
+        <div class="chat-filters">
+          <button id="chat-sort-last-message-btn">Sort by last message</button>
+          <button id="chat-sort-alpha-btn">Sort A–Z</button>
+        </div>
+        <ul id="user-list">
+          <!-- Filled dynamically with users: online/offline, last message order -->
+        </ul>
+      </aside>
+
+      <!-- Center: main content (auth, feed, post details) -->
+      <section class="main-content">
+        <!-- AUTH SECTION -->
+        <section id="auth-section" class="view-section">
+          <div class="auth-forms">
+            <!-- Login form -->
+            <div class="card" id="login-card">
+              <h2>Login</h2>
+              <form id="login-form">
+                <!-- Can be nickname OR email -->
+                <label>
+                  Nickname or Email
+                  <input type="text" name="identifier" required />
+                </label>
+                <label>
+                  Password
+                  <input type="password" name="password" required />
+                </label>
+                <button type="submit">Login</button>
+                <p class="form-message" id="login-message"></p>
+              </form>
+            </div>
+            <!-- Register form -->
+            <div class="card" id="register-card">
+              <h2>Register</h2>
+              <form id="register-form">
+                <label>
+                  Nickname
+                  <input type="text" name="nickname" required />
+                </label>
+                <label>
+                  First Name
+                  <input type="text" name="first_name" required />
+                </label>
+                <label>
+                  Last Name
+                  <input type="text" name="last_name" required />
+                </label>
+                <label>
+                  Age
+                  <input type="number" name="age" min="13" required />
+                </label>
+                <label>
+                  Gender
+                  <select name="gender" required>
+                    <option value="">Select…</option>
+                    <option value="female">Female</option>
+                    <option value="male">Male</option>
+                    <option value="other">Other</option>
+                    <option value="prefer_not_say">Prefer not to say</option>
+                  </select>
+                </label>
+                <label>
+                  Email
+                  <input type="email" name="email" required />
+                </label>
+                <label>
+                  Password
+                  <input type="password" name="password" required />
+                </label>
+                <button type="submit">Register</button>
+                <p class="form-message" id="register-message"></p>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- POSTS FEED SECTION -->
+        <section id="feed-section" class="view-section hidden">
+          <header class="section-header">
+            <h2>Posts</h2>
+            <div class="post-filters">
+              <button data-filter="all" class="filter-btn active">
+                All Posts
+              </button>
+              <button data-filter="my-posts" class="filter-btn">
+                My Posts
+              </button>
+              <button data-filter="liked" class="filter-btn">
+                Liked Posts
+              </button>
+            </div>
+            <div class="category-filter">
+              <label for="category-select">Category:</label>
+              <select id="category-select">
+                <option value="">All</option>
+                <!-- Filled dynamically with categories -->
+              </select>
+            </div>
+          </header>
+
+          <div id="posts-list" class="posts-list">
+            <!-- Filled dynamically with posts from /posts -->
+          </div>
+
+          <!-- New post form (shown when user clicks "New Post") -->
+          <div id="new-post-card" class="card hidden">
+            <h3>Create Post</h3>
+            <form id="new-post-form">
+              <label>
+                Title
+                <input type="text" name="title" required />
+              </label>
+              <label>
+                Content
+                <textarea name="content" rows="4" required></textarea>
+              </label>
+              <label>
+                Categories (comma separated)
+                <input type="text" name="categories" />
+              </label>
+              <button type="submit">Publish</button>
+              <p class="form-message" id="new-post-message"></p>
+            </form>
+          </div>
+        </section>
+
+        <!-- POST DETAIL + COMMENTS SECTION -->
+        <section id="post-detail-section" class="view-section hidden">
+          <button id="back-to-feed-btn">&larr; Back to posts</button>
+          <article id="post-detail">
+            <!-- Filled dynamically: title, author, date, content, reactions -->
+          </article>
+
+          <section id="comments-section">
+            <h3>Comments</h3>
+            <div id="comments-list">
+              <!-- Filled dynamically with comments for the selected post -->
+            </div>
+
+            <form id="new-comment-form" class="hidden">
+              <textarea
+                name="content"
+                rows="3"
+                placeholder="Write a comment..."
+                required
+              ></textarea>
+              <button type="submit">Comment</button>
+              <p class="form-message" id="new-comment-message"></p>
+            </form>
+          </section>
+        </section>
+      </section>
+
+      <!-- Right: Chat window (private messages) -->
+      <section class="chat-panel hidden" id="chat-panel">
+        <header class="chat-header">
+          <h2 id="chat-with-label">Select a user to chat</h2>
+        </header>
+
+        <div id="chat-messages-container" class="chat-messages">
+          <!-- Messages loaded in chunks of 10, scroll up to load more -->
+        </div>
+
+        <form id="chat-form" class="chat-input hidden">
+          <input
+            type="text"
+            name="message"
+            id="chat-message-input"
+            placeholder="Type a message..."
+            autocomplete="off"
+            required
+          />
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </main>
+
+    <!-- Status / notifications -->
+    <div id="global-notification" class="notification hidden"></div>
+
+    <!-- Main frontend logic: SPA + fetch + WebSockets -->
+    <script src="/app.js"></script>
+  </body>
+</html>

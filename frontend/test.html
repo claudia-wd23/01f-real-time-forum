@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>WebSocket Test</h2>
+
+<script>
+const ws = new WebSocket("ws://localhost:8080/ws");
+
+ws.onopen = () => console.log("Connected");
+ws.onmessage = (msg) => console.log("Received:", msg.data);
+ws.onclose = () => console.log("Closed");
+
+setInterval(() => {
+    ws.send("Hello from browser");
+}, 3000);
+</script>
+
+</body>
+</html>
+
