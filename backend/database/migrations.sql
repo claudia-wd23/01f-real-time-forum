@@ -53,6 +53,34 @@ CREATE TABLE IF NOT EXISTS sessions (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- categories
+CREATE TABLE IF NOT EXISTS categories (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE
+);
+
+-- post ↔ category join
+CREATE TABLE IF NOT EXISTS post_categories (
+    post_id     INTEGER NOT NULL,
+    category_id INTEGER NOT NULL,
+    PRIMARY KEY (post_id, category_id),
+    FOREIGN KEY (post_id)     REFERENCES posts(id)      ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+
+-- seed default categories (safe to re-run)
+INSERT OR IGNORE INTO categories (name) VALUES
+    ('Technology'),
+    ('Science'),
+    ('Art & Culture'),
+    ('Music'),
+    ('Sports'),
+    ('Politics'),
+    ('Travel'),
+    ('Food & Drink'),
+    ('Gaming'),
+    ('Health & Wellness');
+
 /*CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nickname TEXT UNIQUE,

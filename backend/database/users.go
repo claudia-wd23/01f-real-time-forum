@@ -98,6 +98,9 @@ func (d *Database) GetUserByID(id int) (*models.User, error) {
 }
 
 func (d *Database) GetUserByUsername(username string) (*models.User, error) {
+    if username == "" {
+        return nil, ErrUserNotFound
+    }
     row := d.DB.QueryRow(`
         SELECT id, username, email, password_hash, created_at
         FROM users

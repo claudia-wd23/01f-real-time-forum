@@ -1,16 +1,17 @@
 package database
 
 import (
-	"database/sql"
-	"errors"
-	"time"
+    "database/sql"
+    "errors"
+    "strings"
+    "time"
 
-	"real-time-forum/backend/models"
+    "real-time-forum/backend/models"
 )
 
 var ErrPostNotFound = errors.New("post not found")
 
-func (d *Database) CreatePost(userID int, title, content string) (*models.Post, error) {
+func (d *Database) CreatePost(userID int, title, content string, categories []string) (*models.Post, error) {
     now := time.Now().UTC()
     ts := now.Format(time.RFC3339)
 
@@ -22,84 +23,106 @@ func (d *Database) CreatePost(userID int, title, content string) (*models.Post, 
         return nil, err
     }
 
-    id, err := res.LastInsertId()
+    postID, err := res.LastInsertId()
     if err != nil {
         return nil, err
     }
 
+    for _, catName := range categories {
+        var catID int
+        err := d.DB.QueryRow(`SELECT id FROM categories WHERE name = ?`, catName).Scan(&catID)
+        if err != nil {
+            continue
+        }
+        d.DB.Exec(`INSERT OR IGNORE INTO post_categories (post_id, category_id) VALUES (?, ?)`, postID, catID)
+    }
+
     return &models.Post{
-        ID:        int(id),
-        UserID:    userID,
-        Title:     title,
-        Content:   content,
-        CreatedAt: now,
-        UpdatedAt: now,
+        ID:         int(postID),
+        UserID:     userID,
+        Title:      title,
+        Content:    content,
+        Categories: categories,
+        CreatedAt:  now,
+        UpdatedAt:  now,
     }, nil
 }
 
 func (d *Database) GetPost(id int) (*models.Post, error) {
     row := d.DB.QueryRow(`
-        SELECT id, user_id, title, content, created_at, updated_at
-        FROM posts
-        WHERE id = ?
+        SELECT p.id, p.user_id, u.username, p.title, p.content, p.created_at, p.updated_at,
+               GROUP_CONCAT(c.name) AS categories
+        FROM posts p
+        LEFT JOIN users u ON p.user_id = u.id
+        LEFT JOIN post_categories pc ON p.id = pc.post_id
+        LEFT JOIN categories c ON pc.category_id = c.id
+        WHERE p.id = ?
+        GROUP BY p.id
     `, id)
 
-    var p models.Post
-    var createdAtStr, updatedAtStr string
-
-    if err := row.Scan(&p.ID, &p.UserID, &p.Title, &p.Content, &createdAtStr, &updatedAtStr); err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return nil, ErrPostNotFound
-        }
-        return nil, err
-    }
-
-    createdAt, _ := time.Parse(time.RFC3339, createdAtStr)
-    updatedAt, _ := time.Parse(time.RFC3339, updatedAtStr)
-
-    p.CreatedAt = createdAt
-    p.UpdatedAt = updatedAt
-
-    return &p, nil
+    return scanPost(row)
 }
 
-func (d *Database) ListPosts() ([]models.Post, error) {
-    rows, err := d.DB.Query(`
-        SELECT id, user_id, title, content, created_at, updated_at
-        FROM posts
-        ORDER BY created_at DESC
-    `)
+func (d *Database) ListPosts(categoryFilter string) ([]models.Post, error) {
+    query := `
+        SELECT p.id, p.user_id, u.username, p.title, p.content, p.created_at, p.updated_at,
+               GROUP_CONCAT(c.name) AS categories
+        FROM posts p
+        LEFT JOIN users u ON p.user_id = u.id
+        LEFT JOIN post_categories pc ON p.id = pc.post_id
+        LEFT JOIN categories c ON pc.category_id = c.id
+    `
+    args := []interface{}{}
+    if categoryFilter != "" {
+        query += ` WHERE p.id IN (
+            SELECT pc2.post_id FROM post_categories pc2
+            JOIN categories c2 ON pc2.category_id = c2.id
+            WHERE c2.name = ?
+        )`
+        args = append(args, categoryFilter)
+    }
+    query += ` GROUP BY p.id ORDER BY p.created_at DESC`
+
+    rows, err := d.DB.Query(query, args...)
     if err != nil {
         return nil, err
     }
     defer rows.Close()
 
     var posts []models.Post
-
     for rows.Next() {
-        var p models.Post
-        var createdAtStr, updatedAtStr string
-
-        if err := rows.Scan(&p.ID, &p.UserID, &p.Title, &p.Content, &createdAtStr, &updatedAtStr); err != nil {
+        p, err := scanPost(rows)
+        if err != nil {
             return nil, err
         }
-
-        p.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
-        p.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
-
-        posts = append(posts, p)
+        posts = append(posts, *p)
     }
-
     return posts, nil
+}
+
+func (d *Database) ListCategories() ([]models.Category, error) {
+    rows, err := d.DB.Query(`SELECT id, name FROM categories ORDER BY name`)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var cats []models.Category
+    for rows.Next() {
+        var c models.Category
+        if err := rows.Scan(&c.ID, &c.Name); err != nil {
+            return nil, err
+        }
+        cats = append(cats, c)
+    }
+    return cats, nil
 }
 
 func (d *Database) UpdatePost(id int, title, content string) error {
     now := time.Now().UTC().Format(time.RFC3339)
 
     res, err := d.DB.Exec(`
-        UPDATE posts
-        SET title = ?, content = ?, updated_at = ?
-        WHERE id = ?
+        UPDATE posts SET title = ?, content = ?, updated_at = ? WHERE id = ?
     `, title, content, now, id)
     if err != nil {
         return err
@@ -109,7 +132,6 @@ func (d *Database) UpdatePost(id int, title, content string) error {
     if affected == 0 {
         return ErrPostNotFound
     }
-
     return nil
 }
 
@@ -123,6 +145,35 @@ func (d *Database) DeletePost(id int) error {
     if affected == 0 {
         return ErrPostNotFound
     }
-
     return nil
+}
+
+// scanner works for both *sql.Row and *sql.Rows
+type scanner interface {
+    Scan(dest ...interface{}) error
+}
+
+func scanPost(s scanner) (*models.Post, error) {
+    var p models.Post
+    var createdAtStr, updatedAtStr string
+    var catRaw sql.NullString
+
+    if err := s.Scan(&p.ID, &p.UserID, &p.Username, &p.Title, &p.Content,
+        &createdAtStr, &updatedAtStr, &catRaw); err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return nil, ErrPostNotFound
+        }
+        return nil, err
+    }
+
+    p.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+    p.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAtStr)
+
+    if catRaw.Valid && catRaw.String != "" {
+        p.Categories = strings.Split(catRaw.String, ",")
+    } else {
+        p.Categories = []string{}
+    }
+
+    return &p, nil
 }

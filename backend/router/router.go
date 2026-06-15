@@ -45,6 +45,7 @@ func SetupRouter(db *database.Database) *mux.Router {
 
     api.HandleFunc("/posts", postsHandler.ListPosts).Methods("GET")
     api.HandleFunc("/posts/get", postsHandler.GetPost).Methods("GET")
+    api.HandleFunc("/categories", postsHandler.GetCategories).Methods("GET")
 
     api.Handle("/posts/update",
         authMiddleware.RequireAuth(http.HandlerFunc(postsHandler.UpdatePost)),

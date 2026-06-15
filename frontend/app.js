@@ -140,6 +140,8 @@ document.getElementById("nav-new-post-btn").addEventListener("click", () => {
 // ---------- INITIAL /me CHECK ----------
 
 window.addEventListener("DOMContentLoaded", async () => {
+  await loadCategories();
+
   try {
     const res = await fetch("/api/me");
     if (res.ok) {
@@ -159,11 +161,53 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+// ---------- CATEGORIES ----------
+
+async function loadCategories() {
+  try {
+    const res = await fetch("/api/categories");
+    if (!res.ok) return;
+    const categories = await res.json();
+
+    // Populate the filter dropdown
+    const select = document.getElementById("category-select");
+    select.innerHTML = `<option value="">All</option>`;
+    categories.forEach((cat) => {
+      const opt = document.createElement("option");
+      opt.value = cat.Name;
+      opt.textContent = cat.Name;
+      select.appendChild(opt);
+    });
+
+    // Populate the new-post checkbox group
+    const group = document.getElementById("new-post-categories");
+    group.innerHTML = "";
+    categories.forEach((cat) => {
+      const label = document.createElement("label");
+      label.className = "checkbox-label";
+      label.innerHTML = `
+        <input type="checkbox" name="category" value="${cat.Name}" />
+        <span>${cat.Name}</span>
+      `;
+      group.appendChild(label);
+    });
+  } catch (err) {
+    console.error("Error loading categories:", err);
+  }
+}
+
+// Filter posts when category dropdown changes
+document.getElementById("category-select").addEventListener("change", () => {
+  loadPosts();
+});
+
 // ---------- POSTS FEED ----------
 
 async function loadPosts() {
   try {
-    const res = await fetch("/api/posts");
+    const category = document.getElementById("category-select").value;
+    const url = category ? `/api/posts?category=${encodeURIComponent(category)}` : "/api/posts";
+    const res = await fetch(url);
     if (!res.ok) {
       console.error("Failed to load posts");
       return;
@@ -180,25 +224,29 @@ function renderPosts(posts) {
   list.innerHTML = "";
 
   if (!posts || posts.length === 0) {
-    list.innerHTML = "<p>No posts yet. Be the first to create one!</p>";
+    list.innerHTML = `<p class="no-posts">No posts yet. Be the first to create one.</p>`;
     return;
   }
 
   posts.forEach((post) => {
+    const categories = (post.Categories || [])
+      .map((c) => `<span class="category-badge">${c}</span>`)
+      .join("");
+
+    const date = post.CreatedAt
+      ? new Date(post.CreatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      : "";
+
     const item = document.createElement("article");
     item.className = "post-item";
     item.innerHTML = `
       <h3 class="post-title">${post.Title || post.title}</h3>
       <p class="post-meta">
-        By ${post.Username || post.author || "Unknown"} ·
-        ${post.CreatedAt || ""}
+        By ${post.Username || post.author || "Unknown"} &middot; ${date}
       </p>
-      <p class="post-content">
-        ${(post.Content || "").slice(0, 200)}...
-      </p>
-      <button class="view-post-btn" data-post-id="${post.ID || post.id}">
-        View details
-      </button>
+      ${categories ? `<div class="post-categories">${categories}</div>` : ""}
+      <p class="post-content">${(post.Content || "").slice(0, 200)}${(post.Content || "").length > 200 ? "…" : ""}</p>
+      <button class="view-post-btn" data-post-id="${post.ID || post.id}">Read more</button>
     `;
     list.appendChild(item);
   });
@@ -210,6 +258,38 @@ function renderPosts(posts) {
     });
   });
 }
+
+// ---------- NEW POST FORM ----------
+
+document.getElementById("new-post-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = e.target;
+
+  const checkedBoxes = form.querySelectorAll('input[name="category"]:checked');
+  const categories = Array.from(checkedBoxes).map((cb) => cb.value);
+
+  const data = {
+    title: form.title.value,
+    content: form.content.value,
+    categories,
+  };
+
+  const res = await fetch("/api/posts/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (res.ok) {
+    form.reset();
+    document.getElementById("new-post-card").classList.add("hidden");
+    loadPosts();
+  } else {
+    document.getElementById("new-post-message").textContent = "Failed to create post.";
+  }
+});
+
+// ---------- POST DETAIL ----------
 
 async function loadPostDetail(postId) {
   try {
@@ -228,12 +308,21 @@ async function loadPostDetail(postId) {
 
 function renderPostDetail(post) {
   const container = document.getElementById("post-detail");
+
+  const categories = (post.Categories || [])
+    .map((c) => `<span class="category-badge">${c}</span>`)
+    .join("");
+
+  const date = post.CreatedAt
+    ? new Date(post.CreatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    : "";
+
   container.innerHTML = `
     <h2>${post.Title || post.title}</h2>
     <p class="post-meta">
-      By ${post.Username || post.author || "Unknown"} ·
-      ${post.CreatedAt || ""}
+      By ${post.Username || post.author || "Unknown"} &middot; ${date}
     </p>
+    ${categories ? `<div class="post-categories" style="margin-bottom:14px">${categories}</div>` : ""}
     <p class="post-content">${post.Content || post.content}</p>
   `;
 }
@@ -313,8 +402,4 @@ function openChatWith(userId, username) {
   currentChatUserId = userId;
   document.getElementById("chat-with-label").textContent = `Chat with ${username}`;
   document.getElementById("chat-form").classList.remove("hidden");
-  // TODO: load last messages via /api/messages
 }
-
-
-  
